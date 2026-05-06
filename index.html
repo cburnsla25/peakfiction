@@ -17,6 +17,7 @@
             --curse-color: #9b59b6;
             --boss-color: #e67e22;
             --success: #2ecc71;
+            --static-color: #a0a0a0;
             --radius: 12px;
             --font: 'Segoe UI', system-ui, sans-serif;
             --line-locked: #3a3a45;
@@ -205,10 +206,24 @@
             line-height: 1.5;
             display: flex;
             align-items: center;
+            position: relative;
         }
         .quest-card:hover { border-color: var(--primary); transform: translateX(5px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .quest-card.boss-card { border-color: var(--boss-color); }
         .quest-card.curse-card { border-color: var(--curse-color); }
+        
+        .static-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--static-color);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
         
         .skip-alert {
             position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
@@ -311,45 +326,61 @@
 
 <script>
     // --- DATA ---
+    
+    // MUTABLE NORMAL QUESTS (Numbers in these will be changed by curses)
     const NORMAL_QUESTS = [
-        "hit silver 1 in vbl", "5 kills in jjs", "win a game in any fps game", "do 30 pushups", 
+        "5 kills in jjs", "win a game in any fps game", "do 30 pushups", 
         "hit a second tempo attack with someone in volleyball", "win 1 ranked game in tsb", 
         "run a 10 min mile", "tell chatgpt to give you a random anime and watch the 1st episode of it", 
-        "make a 3 pointer in basketball", "earn $1", "get a 0.1% on a farm in any atd game except als", 
-        "5 lessons on duolingo of any language", "win a match of chess against a bot", 
-        "make a daily ranking with majority W", "drink 5 bottles of water", "set your ap human book ablaze", 
-        "find a bug in one of cullens single file games", "beat all of the New York Times dailies", 
-        "win a randoms match in pokemon showdown", "go to the gym/do a full workout from home", 
-        "listen to an album you haven’t listened to yet", "delete all the games from your school computer", 
-        "do something nice for your parents/sibling", "get 3 couples on tomodachi life to have a kid", 
+        "make a 3 pointer in basketball", "5 lessons on duolingo of any language", 
+        "win a match of chess against a bot", "make a daily ranking with majority W", 
+        "drink 5 bottles of water", "get 3 couples on tomodachi life to have a kid", 
         "get chatgpt to give you an apush leq prompt and have it give you at least an 80%", 
-        "beat any of your sibling(s) in any sport", "get any title in pvhs", "get a haircut", 
-        "no social media for 1h", "read the 1st chapter of aidan’s book", 
-        "pass a song in any rhythm game on hard difficulty or higher", 
+        "no social media for 1h", "pass a song in any rhythm game on hard difficulty or higher", 
         "correctly guess the ghost and survive on nightmare difficulty Phasmophobia by yourself, and complete at least 2 of the objectives on the board.", 
         "hold a decent 30s conversation with a person not from the fg at PVHS.", 
         "convince dyaln/zachary that a lie is actually true", "create a short story with ~1000 words and make Aidan read it", 
         "play a random game on steam for 30 minutes and write a short review on it and grade it out of 10", 
         "watch a mc video that is an 1 hour long or more to completion", "watch yt shorts/instagram reels/tiktok for 20m", 
-        "go to a pool with someone in the fg", "get a teacher’s autograph", "sit undeafened in a public vc for 10 minutes", 
-        "beat 3 nights in any fnaf game (roblox games count)", "write a detailed review on any show/movie you’ve watched", 
-        "complete a chimps run in bloons 6", "successfully ragebait zachary", 
-        "go 1 hour without talking about anything apush/apsem/leg/mun related", "steal someone’s food at lunch", 
-        "win a game of discord blackjack", "change your entire discord profile"
+        "sit undeafened in a public vc for 10 minutes", "beat 3 nights in any fnaf game (roblox games count)", 
+        "complete a chimps run in bloons 6", "go 1 hour without talking about anything apush/apsem/leg/mun related", 
+        "win a game of discord blackjack"
     ];
 
+    // STATIC NORMAL QUESTS (These NEVER get changed by numbers)
+    const STATIC_NORMAL_QUESTS = [
+        "hit silver 1 in vbl", "earn $1", "get a 0.1% on a farm in any atd game except als", 
+        "set your ap human book ablaze", "find a bug in one of cullens single file games", 
+        "beat all of the New York Times dailies", "win a randoms match in pokemon showdown", 
+        "go to the gym/do a full workout from home", "listen to an album you haven’t listened to yet", 
+        "delete all the games from your school computer", "do something nice for your parents/sibling", 
+        "beat any of your sibling(s) in any sport", "get any title in pvhs", "get a haircut", 
+        "read the 1st chapter of aidan’s book", "go to a pool with someone in the fg", 
+        "get a teacher’s autograph", "successfully ragebait zachary", "steal someone’s food at lunch", 
+        "change your entire discord profile"
+    ];
+
+    // MUTABLE BOSS QUESTS (Numbers in these will be changed by curses)
     const BOSS_QUESTS = [
-        "win a 2 on 2s volleyball or soccer match with people in the fg", "eat a bug", "get everyone in the server in call", 
-        "bake/cook something and share it with 3 people in the friend group", "make a fully edited YouTube video/short", 
-        "beat minecraft in under 90 min", "ragebait connor or preston", "dye your hair a different color", 
-        "get a buzz", "no social media for 8h (school hours DO NOT COUNT)", "ask a random out (maxim reference)", 
+        "win a 2 on 2s volleyball or soccer match with people in the fg",
+        "bake/cook something and share it with 3 people in the friend group", 
+        "beat minecraft in under 90 min", "no social media for 8h (school hours DO NOT COUNT)", 
         "mute everyone in the server for 6 hours", "do an anime dub with 1 other person", 
-        "write a cover/your own song and sing it and post it for the friend group", "delete tiktok", 
-        "beat a demon in geometry dash", "steal something from someone and have them not notice for 15 minutes", 
-        "don’t say ANYTHING for an entire class", "hit a first tempo with someone", "get connor to let you host an event", 
+        "write a cover/your own song and sing it and post it for the friend group", 
+        "steal something from someone and have them not notice for 15 minutes", 
         "get to 40 miis on tomodachi life", "go up by 50 kills in jjs/tsb", "win 5 soccer zero matches", 
         "watch all of a spring 2026 anime that has currently finished airing and that you haven’t watched", 
-        "finish 1 arc of one piece (anime)", "buy christian something from the vending machine", "do 10 random normal quests"
+        "do 10 random normal quests"
+    ];
+
+    // STATIC BOSS QUESTS (These NEVER get changed by numbers)
+    const STATIC_BOSS_QUESTS = [
+        "eat a bug", "get everyone in the server in call", "make a fully edited YouTube video/short", 
+        "ragebait connor or preston", "dye your hair a different color", "get a buzz", 
+        "ask a random out (maxim reference)", "delete tiktok", "beat a demon in geometry dash", 
+        "don’t say ANYTHING for an entire class", "hit a first tempo with someone", 
+        "get connor to let you host an event", "finish 1 arc of one piece (anime)", 
+        "buy christian something from the vending machine"
     ];
 
     const CURSES = [
@@ -364,7 +395,7 @@
     // --- STATE ---
     let state = {
         floors: [],
-        currentFloor: -1, // -1 means haven't started (floor 0 available)
+        currentFloor: -1, 
         currentNodeId: null,
         skips: 0,
         rerolls: 0,
@@ -376,15 +407,15 @@
             bossOverrideQueue: 0,
             extraQuestsGlobal: 0,
             extraQuestsNextNode: 0,
-            autoSkipNext: 0, // Curse 3
-            skipEveryOther: false, // Curse 4
+            autoSkipNext: 0, 
+            skipEveryOther: false, 
             skipNextDueToCurse4: false,
-            phantomNodesQueue: 0 // Curse 1 extra nodes
+            phantomNodesQueue: 0 
         },
         questsToComplete: 0,
         currentQuestPool: [],
         isUsingSkipButton: false,
-        resolvingNodeType: null // to track if resolving a phantom node
+        resolvingNodeType: null 
     };
 
     let options = { theme: 'dark', uiStyle: 'modern' };
@@ -393,7 +424,7 @@
     window.onload = () => {
         loadOptions();
         checkSave();
-        window.addEventListener('resize', renderMap); // Redraw SVG lines on resize
+        window.addEventListener('resize', renderMap);
     };
 
     function getEl(id) { return document.getElementById(id); }
@@ -401,7 +432,7 @@
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         getEl(id).classList.add('active');
-        if(id === 'screen-map') setTimeout(renderMap, 50); // small delay to ensure container size is computed
+        if(id === 'screen-map') setTimeout(renderMap, 50); 
     }
 
     function checkSave() {
@@ -454,48 +485,40 @@
             questsToComplete: 0, currentQuestPool: [], isUsingSkipButton: false, resolvingNodeType: null
         };
         
-        const totalFloors = 15; // 0 to 14
+        const totalFloors = 15;
         
-        // 1. Create Nodes
         for(let f = 0; f < totalFloors; f++) {
             let floorNodes = [];
-            let count = (f === totalFloors - 1) ? 1 : (f === 0 ? 3 : Math.floor(Math.random() * 3) + 2); // 2-4 nodes per floor, Boss has 1
+            let count = (f === totalFloors - 1) ? 1 : (f === 0 ? 3 : Math.floor(Math.random() * 3) + 2); 
             
             for(let i = 0; i < count; i++) {
                 let baseX = (i + 1) / (count + 1);
                 let jitter = (Math.random() * 0.08) - 0.04; 
-                let x = Math.max(0.1, Math.min(0.9, baseX + jitter)); // Clamp between 10% and 90%
+                let x = Math.max(0.1, Math.min(0.9, baseX + jitter)); 
                 
                 let type = 'normal';
                 if (f === totalFloors - 1) type = 'boss';
                 else if (Math.random() > 0.70) type = 'curse';
                 
                 floorNodes.push({
-                    id: `n_${f}_${i}`,
-                    type: type,
-                    floor: f,
-                    x: x,
-                    parents: [],
-                    children: [],
+                    id: `n_${f}_${i}`, type: type, floor: f, x: x,
+                    parents: [], children: [],
                     status: (f === 0) ? 'available' : 'locked'
                 });
             }
             state.floors.push(floorNodes);
         }
 
-        // 2. Connect Floors
         for(let f = 0; f < totalFloors - 1; f++) {
             let currentF = state.floors[f];
             let nextF = state.floors[f+1];
             
-            // Connect each node in current floor to closest in next floor
             currentF.forEach(node => {
                 let closest = nextF.reduce((p, c) => Math.abs(c.x - node.x) < Math.abs(p.x - node.x) ? c : p);
                 if(!node.children.includes(closest.id)) node.children.push(closest.id);
                 if(!closest.parents.includes(node.id)) closest.parents.push(node.id);
             });
             
-            // Ensure every node in next floor has at least one parent
             nextF.forEach(node => {
                 if (node.parents.length === 0) {
                     let closest = currentF.reduce((p, c) => Math.abs(c.x - node.x) < Math.abs(p.x - node.x) ? c : p);
@@ -526,7 +549,6 @@
         for(let key in counts) curseText += `[Curse ${parseInt(key)+1} x${counts[key]}] `;
         getEl('active-curses').innerText = curseText;
 
-        // Ensure state safety
         if(state.modifiers.phantomNodesQueue > 0 && getEl('modal-quest').style.display !== 'flex') {
             getEl('modal-phantom').style.display = 'flex';
         }
@@ -542,7 +564,6 @@
         const floorHeight = 130;
         const totalHeight = Math.max(container.clientHeight, state.floors.length * floorHeight + 100);
         
-        // 1. Draw SVG Lines
         let svg = `<svg style="height:${totalHeight}px; width:100%; position:absolute; top:0; left:0; pointer-events:none; z-index:1;">`;
         state.floors.forEach(floor => {
             floor.forEach(n => {
@@ -562,7 +583,6 @@
         svg += `</svg>`;
         container.innerHTML += svg;
 
-        // 2. Draw Nodes
         state.floors.forEach(floor => {
             floor.forEach(n => {
                 let y = totalHeight - (n.floor * floorHeight) - 80;
@@ -581,7 +601,6 @@
             });
         });
 
-        // 3. Scroll to view
         setTimeout(() => {
             const avail = document.querySelector('.node.available');
             if(avail) {
@@ -604,9 +623,9 @@
 
     // --- NODE INTERACTION ---
     function handleNodeClick(id) {
+        state.currentNodeId = id;
         let node = findNode(id);
         
-        // Auto Skip Logic (Except for Boss node)
         let skipThisNode = false;
         if (state.isUsingSkipButton) {
             skipThisNode = true;
@@ -627,26 +646,23 @@
             return;
         }
 
-        // Setup Quests
         if(state.modifiers.rerollPerTile) state.rerolls++;
 
         state.resolvingNodeType = node.type;
         
-        // Extra quests do NOT apply to Boss
         if (node.type === 'boss') {
             state.questsToComplete = 1;
         } else {
             state.questsToComplete = 1 + state.modifiers.extraQuestsGlobal + state.modifiers.extraQuestsNextNode;
         }
         
-        state.modifiers.extraQuestsNextNode = 0; // Consume next node extra
+        state.modifiers.extraQuestsNextNode = 0; 
         openQuestSelection(node.type);
     }
 
-    // Phantom Nodes (Curse 1)
     function startPhantomNode() {
         getEl('modal-phantom').style.display = 'none';
-        state.resolvingNodeType = 'normal'; // Treat as normal map node
+        state.resolvingNodeType = 'normal'; 
         state.questsToComplete = 1 + state.modifiers.extraQuestsGlobal + state.modifiers.extraQuestsNextNode;
         state.modifiers.extraQuestsNextNode = 0;
         openQuestSelection('normal');
@@ -674,20 +690,37 @@
     }
 
     function rollQuests(nodeType) {
-        let pool = (nodeType === 'boss') ? BOSS_QUESTS : NORMAL_QUESTS;
+        let pool = [];
         let isBossOverride = false;
 
+        // Determine which pools to combine
         if (nodeType !== 'boss' && state.modifiers.bossOverrideQueue > 0) {
-            pool = BOSS_QUESTS;
+            pool = [
+                ...BOSS_QUESTS.map(q => ({ raw: q, mutable: true })),
+                ...STATIC_BOSS_QUESTS.map(q => ({ raw: q, mutable: false }))
+            ];
             isBossOverride = true;
+        } else if (nodeType === 'boss') {
+            pool = [
+                ...BOSS_QUESTS.map(q => ({ raw: q, mutable: true })),
+                ...STATIC_BOSS_QUESTS.map(q => ({ raw: q, mutable: false }))
+            ];
+        } else {
+            pool = [
+                ...NORMAL_QUESTS.map(q => ({ raw: q, mutable: true })),
+                ...STATIC_NORMAL_QUESTS.map(q => ({ raw: q, mutable: false }))
+            ];
         }
 
         let numOptions = state.modifiers.singleOption ? 1 : 3;
-        let shuffled = [...pool].sort(() => 0.5 - Math.random());
+        let shuffled = pool.sort(() => 0.5 - Math.random());
         let selected = shuffled.slice(0, numOptions);
 
         state.currentQuestPool = selected.map(q => ({
-            raw: q, text: applyMathToText(q, isBossOverride), isBossOverride: isBossOverride
+            raw: q.raw, 
+            text: q.mutable ? applyMathToText(q.raw, isBossOverride) : q.raw, 
+            isBossOverride: isBossOverride,
+            isStatic: !q.mutable
         }));
     }
 
@@ -704,6 +737,14 @@
             let card = document.createElement('div');
             card.className = `quest-card ${q.isBossOverride ? 'boss-card' : ''}`;
             card.innerText = q.text;
+            
+            if (q.isStatic) {
+                let badge = document.createElement('span');
+                badge.className = 'static-badge';
+                badge.innerText = 'STATIC';
+                card.appendChild(badge);
+            }
+            
             card.onclick = () => acceptQuest(idx);
             list.appendChild(card);
         });
@@ -726,27 +767,17 @@
         if (state.questsToComplete <= 0) {
             getEl('modal-quest').style.display = 'none';
             
-            // Check if we were resolving a phantom node
             if (state.modifiers.phantomNodesQueue > 0) {
                 state.modifiers.phantomNodesQueue--;
-                updateUI(); // Will show phantom modal again if > 0, else proceed map
+                updateUI(); 
             } else {
-                completeNode(findNode(state.currentNodeId), false); // We use currentNodeId, but wait, it might not be set yet if it was the initial click.
-                // Actually, handleNodeClick hasn't set state.currentNodeId yet!
-                // Let's fix that: it's better to set it when clicked.
+                completeNode(findNode(state.currentNodeId), false); 
             }
         } else {
             rollQuests(state.resolvingNodeType);
             updateQuestUI();
         }
     }
-
-    // Fix for above: when clicking node, update id before modal.
-    const originalHandleNodeClick = handleNodeClick;
-    handleNodeClick = function(id) {
-        state.currentNodeId = id; // Store ID being resolved
-        originalHandleNodeClick(id);
-    };
 
     function completeNode(node, wasSkipped) {
         node.status = 'completed';
@@ -761,21 +792,17 @@
 
         let showCurseMenu = (node.type === 'curse' && !wasSkipped);
 
-        // Advance Map logic
-        // 1. Lock all nodes on current and previous floors
         state.floors.forEach((floor, fIdx) => {
             if (fIdx <= state.currentFloor) {
                 floor.forEach(n => { if(n.status === 'available') n.status = 'locked'; });
             }
         });
 
-        // 2. Unlock children
         node.children.forEach(cId => {
             let child = findNode(cId);
             if (child) child.status = 'available';
         });
 
-        // Curse 4 (Skip Every Other) toggle tracking
         if (state.modifiers.skipEveryOther && !wasSkipped) {
             state.modifiers.skipNextDueToCurse4 = true;
         }
@@ -813,7 +840,7 @@
                 break;
             case 1:
                 state.modifiers.numMultiplier *= 0.8;
-                state.modifiers.phantomNodesQueue += 2; // Force 2 extra normal quests
+                state.modifiers.phantomNodesQueue += 2; 
                 break;
             case 2:
                 state.modifiers.rerollPerTile = true;
@@ -830,7 +857,7 @@
             case 5:
                 state.modifiers.extraQuestsNextNode += 1;
                 openRemoveCurse();
-                return; // Wait for remove UI to close
+                return; 
         }
         
         updateUI();
