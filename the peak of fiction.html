@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quest Spire</title>
+    <style>
+        :root {
+            /* Default Dark Theme */
+            --bg-color: #121216;
+            --text-color: #f0f0f5;
+            --panel-bg: #1e1e24;
+            --border-color: #3a3a45;
+            --primary: #5dade2;
+            --primary-hover: #3498db;
+            --danger: #e74c3c;
+            --curse-color: #9b59b6;
+            --boss-color: #e67e22;
+            --success: #2ecc71;
+            --radius: 12px;
+            --font: 'Segoe UI', system-ui, sans-serif;
+            --line-locked: #3a3a45;
+            --line-active: #5dade2;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f8f9fa;
+            --text-color: #2c3e50;
+            --panel-bg: #ffffff;
+            --border-color: #dee2e6;
+            --primary: #3498db;
+            --primary-hover: #2980b9;
+            --line-locked: #ced4da;
+            --line-active: #3498db;
+        }
+
+        [data-style="classic"] {
+            --radius: 0px;
+            --font: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font);
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            display: flex;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        h1, h2, h3 { text-align: center; margin-top: 0; font-weight: 600; letter-spacing: 1px; }
+        h1 { font-size: 3rem; text-transform: uppercase; margin-bottom: 30px; color: var(--primary); }
+
+        button {
+            background-color: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 14px 24px;
+            margin: 8px 0;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        button:hover { background-color: var(--primary-hover); transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+        button:disabled { background-color: var(--border-color); cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        .btn-danger { background-color: var(--danger); }
+        .btn-danger:hover { background-color: #c0392b; }
+        .btn-warning { background-color: #f1c40f; color: #000; }
+        .btn-warning:hover { background-color: #f39c12; }
+
+        /* Menu */
+        .menu-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, var(--panel-bg) 0%, var(--bg-color) 100%);
+        }
+        .menu-container button { width: 250px; font-size: 18px; }
+        
+        .option-group { margin: 15px 0; display: flex; justify-content: space-between; align-items: center; width: 300px; font-size: 18px; }
+        select { padding: 10px; border-radius: var(--radius); font-family: inherit; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); }
+
+        /* Map Screen */
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .stats-group { display: flex; gap: 20px; font-weight: bold; font-size: 18px; align-items: center; }
+        #active-curses { font-size: 14px; color: var(--curse-color); max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        #map-container {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            background: var(--bg-color);
+            scroll-behavior: smooth;
+        }
+
+        .node {
+            position: absolute;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--panel-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 2;
+            border: 4px solid var(--border-color);
+            transform: translate(-50%, -50%);
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .node.normal { border-color: var(--primary); }
+        .node.curse { border-color: var(--curse-color); }
+        .node.boss { border-color: var(--boss-color); border-radius: 16px; width: 66px; height: 66px; }
+
+        .node.completed { opacity: 0.5; filter: grayscale(50%); border-color: var(--success); }
+        .node.available { 
+            box-shadow: 0 0 20px 5px rgba(241, 196, 15, 0.4); 
+            transform: translate(-50%, -50%) scale(1.15); 
+            animation: pulse 2s infinite; 
+        }
+        .node.locked { filter: grayscale(100%); opacity: 0.5; pointer-events: none; }
+
+        .node-icon { font-size: 26px; }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 15px 2px var(--primary); }
+            50% { box-shadow: 0 0 25px 8px var(--primary); }
+            100% { box-shadow: 0 0 15px 2px var(--primary); }
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center; z-index: 100;
+        }
+
+        .modal-content {
+            background: var(--panel-bg);
+            padding: 30px;
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; gap: 15px;
+            border: 1px solid var(--border-color);
+        }
+
+        .quest-card {
+            border: 2px solid var(--border-color);
+            background: var(--bg-color);
+            padding: 20px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+        }
+        .quest-card:hover { border-color: var(--primary); transform: translateX(5px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .quest-card.boss-card { border-color: var(--boss-color); }
+        .quest-card.curse-card { border-color: var(--curse-color); }
+        
+        .skip-alert {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: var(--boss-color); color: white; padding: 10px 20px;
+            border-radius: 20px; font-weight: bold; z-index: 50; display: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- START SCREEN -->
+    <div id="screen-start" class="screen active">
+        <div class="menu-container">
+            <h1>Quest Spire</h1>
+            <button onclick="startGame(true)" id="btn-continue" style="display:none; background-color: var(--success);">Continue Run</button>
+            <button onclick="startGame(false)">New Game</button>
+            <button onclick="showScreen('screen-options')">Options</button>
+        </div>
+    </div>
+
+    <!-- OPTIONS SCREEN -->
+    <div id="screen-options" class="screen">
+        <div class="menu-container">
+            <h2>Options</h2>
+            <div class="option-group">
+                <label>Theme</label>
+                <select id="opt-theme" onchange="applyOptions()">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label>UI Style</label>
+                <select id="opt-style" onchange="applyOptions()">
+                    <option value="modern">Modern</option>
+                    <option value="classic">Classic</option>
+                </select>
+            </div>
+            <button onclick="saveOptions(); showScreen('screen-start')" style="margin-top: 30px;">Back</button>
+        </div>
+    </div>
+
+    <!-- MAP SCREEN -->
+    <div id="screen-map" class="screen">
+        <div id="top-bar">
+            <div class="stats-group">
+                <span id="ui-skips">Skips: 0</span>
+                <span id="ui-rerolls">Rerolls: 0</span>
+                <button id="btn-use-skip" onclick="toggleManualSkip()" class="btn-warning" style="padding: 6px 12px; margin:0; display:none; font-size:14px;">Use Skip Token</button>
+            </div>
+            <div id="active-curses"></div>
+            <button onclick="saveGame(); showScreen('screen-start')" style="padding: 6px 12px; margin:0;" class="btn-danger">Menu</button>
+        </div>
+        <div id="skip-indicator" class="skip-alert">Skip Token Active! Click an available node to bypass it.</div>
+        <div id="map-container">
+            <!-- SVG and Nodes generated here -->
+        </div>
+    </div>
+
+    <!-- QUEST MODAL -->
+    <div id="modal-quest" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="quest-modal-title">Choose a Quest</h2>
+            <div style="font-size: 14px; text-align: center; color: var(--danger); font-weight: bold;" id="quest-req-text"></div>
+            <div id="quest-list"></div>
+            <button id="btn-reroll" onclick="rerollQuests()" style="display:none; background-color: var(--boss-color);">Reroll (Costs 1)</button>
+        </div>
+    </div>
+
+    <!-- CURSE MODAL -->
+    <div id="modal-curse" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="color: var(--curse-color)">Accept a Curse</h2>
+            <p style="text-align:center; margin-top:0;">You must take one to proceed.</p>
+            <div id="curse-list"></div>
+        </div>
+    </div>
+    
+    <!-- REMOVE CURSE MODAL -->
+    <div id="modal-remove-curse" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="color: var(--success)">Remove a Curse</h2>
+            <p style="text-align:center; margin-top:0;">Select a curse to remove from your active list.</p>
+            <div id="remove-curse-list"></div>
+            <button onclick="closeRemoveCurse(false)" style="margin-top:10px;">Skip (No Curses to Remove)</button>
+        </div>
+    </div>
+
+    <!-- PHANTOM NODE MODAL -->
+    <div id="modal-phantom" class="modal-overlay">
+        <div class="modal-content" style="text-align:center;">
+            <h2 style="color: var(--curse-color)">Curse Path</h2>
+            <p>You must complete extra normal quests before advancing the map.</p>
+            <button onclick="startPhantomNode()">Start Extra Quest</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- DATA ---
+    const NORMAL_QUESTS = [
+        "hit silver 1 in vbl", "5 kills in jjs", "win a game in any fps game", "do 30 pushups", 
+        "hit a second tempo attack with someone in volleyball", "win 1 ranked game in tsb", 
+        "run a 10 min mile", "tell chatgpt to give you a random anime and watch the 1st episode of it", 
+        "make a 3 pointer in basketball", "earn $1", "get a 0.1% on a farm in any atd game except als", 
+        "5 lessons on duolingo of any language", "win a match of chess against a bot", 
+        "make a daily ranking with majority W", "drink 5 bottles of water", "set your ap human book ablaze", 
+        "find a bug in one of cullens single file games", "beat all of the New York Times dailies", 
+        "win a randoms match in pokemon showdown", "go to the gym/do a full workout from home", 
+        "listen to an album you haven’t listened to yet", "delete all the games from your school computer", 
+        "do something nice for your parents/sibling", "get 3 couples on tomodachi life to have a kid", 
+        "get chatgpt to give you an apush leq prompt and have it give you at least an 80%", 
+        "beat any of your sibling(s) in any sport", "get any title in pvhs", "get a haircut", 
+        "no social media for 1h", "read the 1st chapter of aidan’s book", 
+        "pass a song in any rhythm game on hard difficulty or higher", 
+        "correctly guess the ghost and survive on nightmare difficulty Phasmophobia by yourself, and complete at least 2 of the objectives on the board.", 
+        "hold a decent 30s conversation with a person not from the fg at PVHS.", 
+        "convince dyaln/zachary that a lie is actually true", "create a short story with ~1000 words and make Aidan read it", 
+        "play a random game on steam for 30 minutes and write a short review on it and grade it out of 10", 
+        "watch a mc video that is an 1 hour long or more to completion", "watch yt shorts/instagram reels/tiktok for 20m", 
+        "go to a pool with someone in the fg", "get a teacher’s autograph", "sit undeafened in a public vc for 10 minutes", 
+        "beat 3 nights in any fnaf game (roblox games count)", "write a detailed review on any show/movie you’ve watched", 
+        "complete a chimps run in bloons 6", "successfully ragebait zachary", 
+        "go 1 hour without talking about anything apush/apsem/leg/mun related", "steal someone’s food at lunch", 
+        "win a game of discord blackjack", "change your entire discord profile"
+    ];
+
+    const BOSS_QUESTS = [
+        "win a 2 on 2s volleyball or soccer match with people in the fg", "eat a bug", "get everyone in the server in call", 
+        "bake/cook something and share it with 3 people in the friend group", "make a fully edited YouTube video/short", 
+        "beat minecraft in under 90 min", "ragebait connor or preston", "dye your hair a different color", 
+        "get a buzz", "no social media for 8h (school hours DO NOT COUNT)", "ask a random out (maxim reference)", 
+        "mute everyone in the server for 6 hours", "do an anime dub with 1 other person", 
+        "write a cover/your own song and sing it and post it for the friend group", "delete tiktok", 
+        "beat a demon in geometry dash", "steal something from someone and have them not notice for 15 minutes", 
+        "don’t say ANYTHING for an entire class", "hit a first tempo with someone", "get connor to let you host an event", 
+        "get to 40 miis on tomodachi life", "go up by 50 kills in jjs/tsb", "win 5 soccer zero matches", 
+        "watch all of a spring 2026 anime that has currently finished airing and that you haven’t watched", 
+        "finish 1 arc of one piece (anime)", "buy christian something from the vending machine", "do 10 random normal quests"
+    ];
+
+    const CURSES = [
+        { id: 0, text: "All numbers within a quest are multiplied by 1.5x, but you gain 1 icon skip." },
+        { id: 1, text: "Decrease all numbers within a quest by 20% (minimum of 1), but add 2 more normal icons to your path." },
+        { id: 2, text: "Gain 1 quest reroll every tile, but you only have 1 option per icon." },
+        { id: 3, text: "Skip the next icon, but the next quest you do will be a boss quest with numbers decreased by 50%." },
+        { id: 4, text: "Skip every other icon until the boss, but for all future icons you have to complete 1 extra quest." },
+        { id: 5, text: "Next icon you will have to complete 1 more quest, but remove a curse of your choice." }
+    ];
+
+    // --- STATE ---
+    let state = {
+        floors: [],
+        currentFloor: -1, // -1 means haven't started (floor 0 available)
+        currentNodeId: null,
+        skips: 0,
+        rerolls: 0,
+        activeCurses: [],
+        modifiers: {
+            numMultiplier: 1.0,
+            singleOption: false,
+            rerollPerTile: false,
+            bossOverrideQueue: 0,
+            extraQuestsGlobal: 0,
+            extraQuestsNextNode: 0,
+            autoSkipNext: 0, // Curse 3
+            skipEveryOther: false, // Curse 4
+            skipNextDueToCurse4: false,
+            phantomNodesQueue: 0 // Curse 1 extra nodes
+        },
+        questsToComplete: 0,
+        currentQuestPool: [],
+        isUsingSkipButton: false,
+        resolvingNodeType: null // to track if resolving a phantom node
+    };
+
+    let options = { theme: 'dark', uiStyle: 'modern' };
+
+    // --- INIT & UTILS ---
+    window.onload = () => {
+        loadOptions();
+        checkSave();
+        window.addEventListener('resize', renderMap); // Redraw SVG lines on resize
+    };
+
+    function getEl(id) { return document.getElementById(id); }
+    
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        getEl(id).classList.add('active');
+        if(id === 'screen-map') setTimeout(renderMap, 50); // small delay to ensure container size is computed
+    }
+
+    function checkSave() {
+        const saved = localStorage.getItem('questSpireSave');
+        getEl('btn-continue').style.display = saved ? 'inline-block' : 'none';
+    }
+
+    function saveGame() { localStorage.setItem('questSpireSave', JSON.stringify(state)); }
+    function loadGame() { const saved = localStorage.getItem('questSpireSave'); if (saved) state = JSON.parse(saved); }
+    function clearSave() { localStorage.removeItem('questSpireSave'); }
+
+    function saveOptions() {
+        options.theme = getEl('opt-theme').value;
+        options.style = getEl('opt-style').value;
+        localStorage.setItem('questSpireOptions', JSON.stringify(options));
+        applyOptions();
+    }
+
+    function loadOptions() {
+        const saved = localStorage.getItem('questSpireOptions');
+        if (saved) {
+            options = JSON.parse(saved);
+            getEl('opt-theme').value = options.theme;
+            getEl('opt-style').value = options.style;
+        }
+        applyOptions();
+    }
+
+    function applyOptions() {
+        document.body.setAttribute('data-theme', options.theme);
+        document.body.setAttribute('data-style', options.style);
+    }
+
+    // --- MAP GENERATION ---
+    function startGame(isContinue) {
+        if (isContinue) {
+            loadGame();
+        } else {
+            clearSave();
+            generateMap();
+        }
+        updateUI();
+        showScreen('screen-map');
+    }
+
+    function generateMap() {
+        state = {
+            floors: [], currentFloor: -1, currentNodeId: null, skips: 0, rerolls: 0, activeCurses: [],
+            modifiers: { numMultiplier: 1.0, singleOption: false, rerollPerTile: false, bossOverrideQueue: 0, extraQuestsGlobal: 0, extraQuestsNextNode: 0, autoSkipNext: 0, skipEveryOther: false, skipNextDueToCurse4: false, phantomNodesQueue: 0 },
+            questsToComplete: 0, currentQuestPool: [], isUsingSkipButton: false, resolvingNodeType: null
+        };
+        
+        const totalFloors = 15; // 0 to 14
+        
+        // 1. Create Nodes
+        for(let f = 0; f < totalFloors; f++) {
+            let floorNodes = [];
+            let count = (f === totalFloors - 1) ? 1 : (f === 0 ? 3 : Math.floor(Math.random() * 3) + 2); // 2-4 nodes per floor, Boss has 1
+            
+            for(let i = 0; i < count; i++) {
+                let baseX = (i + 1) / (count + 1);
+                let jitter = (Math.random() * 0.08) - 0.04; 
+                let x = Math.max(0.1, Math.min(0.9, baseX + jitter)); // Clamp between 10% and 90%
+                
+                let type = 'normal';
+                if (f === totalFloors - 1) type = 'boss';
+                else if (Math.random() > 0.70) type = 'curse';
+                
+                floorNodes.push({
+                    id: `n_${f}_${i}`,
+                    type: type,
+                    floor: f,
+                    x: x,
+                    parents: [],
+                    children: [],
+                    status: (f === 0) ? 'available' : 'locked'
+                });
+            }
+            state.floors.push(floorNodes);
+        }
+
+        // 2. Connect Floors
+        for(let f = 0; f < totalFloors - 1; f++) {
+            let currentF = state.floors[f];
+            let nextF = state.floors[f+1];
+            
+            // Connect each node in current floor to closest in next floor
+            currentF.forEach(node => {
+                let closest = nextF.reduce((p, c) => Math.abs(c.x - node.x) < Math.abs(p.x - node.x) ? c : p);
+                if(!node.children.includes(closest.id)) node.children.push(closest.id);
+                if(!closest.parents.includes(node.id)) closest.parents.push(node.id);
+            });
+            
+            // Ensure every node in next floor has at least one parent
+            nextF.forEach(node => {
+                if (node.parents.length === 0) {
+                    let closest = currentF.reduce((p, c) => Math.abs(c.x - node.x) < Math.abs(p.x - node.x) ? c : p);
+                    closest.children.push(node.id);
+                    node.parents.push(closest.id);
+                }
+            });
+        }
+    }
+
+    function findNode(id) {
+        for(let f of state.floors) {
+            for(let n of f) if(n.id === id) return n;
+        }
+        return null;
+    }
+
+    // --- UI UPDATES ---
+    function updateUI() {
+        getEl('ui-skips').innerText = `Skips: ${state.skips}`;
+        getEl('ui-rerolls').innerText = `Rerolls: ${state.rerolls}`;
+        getEl('btn-use-skip').style.display = state.skips > 0 ? 'inline-block' : 'none';
+        getEl('skip-indicator').style.display = state.isUsingSkipButton ? 'block' : 'none';
+        
+        let curseText = state.activeCurses.length > 0 ? "Modifiers: " : "";
+        let counts = {};
+        state.activeCurses.forEach(c => counts[c] = (counts[c] || 0) + 1);
+        for(let key in counts) curseText += `[Curse ${parseInt(key)+1} x${counts[key]}] `;
+        getEl('active-curses').innerText = curseText;
+
+        // Ensure state safety
+        if(state.modifiers.phantomNodesQueue > 0 && getEl('modal-quest').style.display !== 'flex') {
+            getEl('modal-phantom').style.display = 'flex';
+        }
+
+        renderMap();
+        saveGame();
+    }
+
+    function renderMap() {
+        const container = getEl('map-container');
+        container.innerHTML = '';
+        
+        const floorHeight = 130;
+        const totalHeight = Math.max(container.clientHeight, state.floors.length * floorHeight + 100);
+        
+        // 1. Draw SVG Lines
+        let svg = `<svg style="height:${totalHeight}px; width:100%; position:absolute; top:0; left:0; pointer-events:none; z-index:1;">`;
+        state.floors.forEach(floor => {
+            floor.forEach(n => {
+                n.children.forEach(cId => {
+                    let child = findNode(cId);
+                    let y1 = totalHeight - (n.floor * floorHeight) - 80;
+                    let y2 = totalHeight - (child.floor * floorHeight) - 80;
+                    
+                    let isPathActive = (n.status === 'completed' && (child.status === 'available' || child.status === 'completed'));
+                    let color = isPathActive ? 'var(--line-active)' : 'var(--line-locked)';
+                    let width = isPathActive ? 5 : 3;
+                    
+                    svg += `<line x1="${n.x*100}%" y1="${y1}" x2="${child.x*100}%" y2="${y2}" stroke="${color}" stroke-width="${width}" />`;
+                });
+            });
+        });
+        svg += `</svg>`;
+        container.innerHTML += svg;
+
+        // 2. Draw Nodes
+        state.floors.forEach(floor => {
+            floor.forEach(n => {
+                let y = totalHeight - (n.floor * floorHeight) - 80;
+                let div = document.createElement('div');
+                div.className = `node ${n.type} ${n.status}`;
+                div.style.left = `${n.x*100}%`;
+                div.style.top = `${y}px`;
+                
+                let icon = n.type === 'normal' ? '⚔️' : (n.type === 'curse' ? '☠️' : '👹');
+                div.innerHTML = `<span class="node-icon">${icon}</span>`;
+                
+                if (n.status === 'available') {
+                    div.onclick = () => handleNodeClick(n.id);
+                }
+                container.appendChild(div);
+            });
+        });
+
+        // 3. Scroll to view
+        setTimeout(() => {
+            const avail = document.querySelector('.node.available');
+            if(avail) {
+                let parentRect = container.getBoundingClientRect();
+                let availTop = parseInt(avail.style.top);
+                container.scrollTop = availTop - (parentRect.height / 2);
+            }
+        }, 100);
+    }
+
+    function toggleManualSkip() {
+        if(state.skips > 0 && !state.isUsingSkipButton) {
+            state.isUsingSkipButton = true;
+            updateUI();
+        } else if (state.isUsingSkipButton) {
+            state.isUsingSkipButton = false;
+            updateUI();
+        }
+    }
+
+    // --- NODE INTERACTION ---
+    function handleNodeClick(id) {
+        let node = findNode(id);
+        
+        // Auto Skip Logic (Except for Boss node)
+        let skipThisNode = false;
+        if (state.isUsingSkipButton) {
+            skipThisNode = true;
+            state.isUsingSkipButton = false;
+            state.skips--;
+        } else if (node.type !== 'boss') {
+            if (state.modifiers.autoSkipNext > 0) {
+                skipThisNode = true;
+                state.modifiers.autoSkipNext--;
+            } else if (state.modifiers.skipNextDueToCurse4) {
+                skipThisNode = true;
+                state.modifiers.skipNextDueToCurse4 = false;
+            }
+        }
+
+        if (skipThisNode) {
+            completeNode(node, true);
+            return;
+        }
+
+        // Setup Quests
+        if(state.modifiers.rerollPerTile) state.rerolls++;
+
+        state.resolvingNodeType = node.type;
+        
+        // Extra quests do NOT apply to Boss
+        if (node.type === 'boss') {
+            state.questsToComplete = 1;
+        } else {
+            state.questsToComplete = 1 + state.modifiers.extraQuestsGlobal + state.modifiers.extraQuestsNextNode;
+        }
+        
+        state.modifiers.extraQuestsNextNode = 0; // Consume next node extra
+        openQuestSelection(node.type);
+    }
+
+    // Phantom Nodes (Curse 1)
+    function startPhantomNode() {
+        getEl('modal-phantom').style.display = 'none';
+        state.resolvingNodeType = 'normal'; // Treat as normal map node
+        state.questsToComplete = 1 + state.modifiers.extraQuestsGlobal + state.modifiers.extraQuestsNextNode;
+        state.modifiers.extraQuestsNextNode = 0;
+        openQuestSelection('normal');
+    }
+
+    // --- NUMBER PARSER ---
+    function applyMathToText(text, isBossOverride) {
+        let mult = state.modifiers.numMultiplier;
+        if (isBossOverride) mult *= 0.5;
+
+        return text.replace(/\b\d+(\.\d+)?\b/g, (match) => {
+            let num = parseFloat(match);
+            let newNum = num * mult;
+            newNum = Math.round(newNum * 10) / 10; 
+            if (num >= 1 && newNum < 1) newNum = 1;
+            return newNum;
+        });
+    }
+
+    // --- QUEST SELECTION ---
+    function openQuestSelection(nodeType) {
+        getEl('modal-quest').style.display = 'flex';
+        rollQuests(nodeType);
+        updateQuestUI();
+    }
+
+    function rollQuests(nodeType) {
+        let pool = (nodeType === 'boss') ? BOSS_QUESTS : NORMAL_QUESTS;
+        let isBossOverride = false;
+
+        if (nodeType !== 'boss' && state.modifiers.bossOverrideQueue > 0) {
+            pool = BOSS_QUESTS;
+            isBossOverride = true;
+        }
+
+        let numOptions = state.modifiers.singleOption ? 1 : 3;
+        let shuffled = [...pool].sort(() => 0.5 - Math.random());
+        let selected = shuffled.slice(0, numOptions);
+
+        state.currentQuestPool = selected.map(q => ({
+            raw: q, text: applyMathToText(q, isBossOverride), isBossOverride: isBossOverride
+        }));
+    }
+
+    function updateQuestUI() {
+        const list = getEl('quest-list');
+        list.innerHTML = '';
+        
+        getEl('quest-req-text').innerText = state.questsToComplete > 1 
+            ? `Quests remaining for this node: ${state.questsToComplete}` : "";
+
+        getEl('btn-reroll').style.display = state.rerolls > 0 ? 'inline-block' : 'none';
+
+        state.currentQuestPool.forEach((q, idx) => {
+            let card = document.createElement('div');
+            card.className = `quest-card ${q.isBossOverride ? 'boss-card' : ''}`;
+            card.innerText = q.text;
+            card.onclick = () => acceptQuest(idx);
+            list.appendChild(card);
+        });
+    }
+
+    function rerollQuests() {
+        if(state.rerolls > 0) {
+            state.rerolls--;
+            rollQuests(state.resolvingNodeType);
+            updateUI();
+            updateQuestUI();
+        }
+    }
+
+    function acceptQuest(idx) {
+        state.questsToComplete--;
+        
+        if (state.currentQuestPool[idx].isBossOverride) state.modifiers.bossOverrideQueue--;
+
+        if (state.questsToComplete <= 0) {
+            getEl('modal-quest').style.display = 'none';
+            
+            // Check if we were resolving a phantom node
+            if (state.modifiers.phantomNodesQueue > 0) {
+                state.modifiers.phantomNodesQueue--;
+                updateUI(); // Will show phantom modal again if > 0, else proceed map
+            } else {
+                completeNode(findNode(state.currentNodeId), false); // We use currentNodeId, but wait, it might not be set yet if it was the initial click.
+                // Actually, handleNodeClick hasn't set state.currentNodeId yet!
+                // Let's fix that: it's better to set it when clicked.
+            }
+        } else {
+            rollQuests(state.resolvingNodeType);
+            updateQuestUI();
+        }
+    }
+
+    // Fix for above: when clicking node, update id before modal.
+    const originalHandleNodeClick = handleNodeClick;
+    handleNodeClick = function(id) {
+        state.currentNodeId = id; // Store ID being resolved
+        originalHandleNodeClick(id);
+    };
+
+    function completeNode(node, wasSkipped) {
+        node.status = 'completed';
+        state.currentFloor = node.floor;
+        
+        if (node.type === 'boss' && !wasSkipped) {
+            alert("Victory! You have conquered the Quest Spire.");
+            clearSave();
+            showScreen('screen-start');
+            return;
+        }
+
+        let showCurseMenu = (node.type === 'curse' && !wasSkipped);
+
+        // Advance Map logic
+        // 1. Lock all nodes on current and previous floors
+        state.floors.forEach((floor, fIdx) => {
+            if (fIdx <= state.currentFloor) {
+                floor.forEach(n => { if(n.status === 'available') n.status = 'locked'; });
+            }
+        });
+
+        // 2. Unlock children
+        node.children.forEach(cId => {
+            let child = findNode(cId);
+            if (child) child.status = 'available';
+        });
+
+        // Curse 4 (Skip Every Other) toggle tracking
+        if (state.modifiers.skipEveryOther && !wasSkipped) {
+            state.modifiers.skipNextDueToCurse4 = true;
+        }
+
+        if (showCurseMenu) {
+            openCurseSelection();
+        } else {
+            updateUI();
+        }
+    }
+
+    // --- CURSES ---
+    function openCurseSelection() {
+        getEl('modal-curse').style.display = 'flex';
+        const list = getEl('curse-list');
+        list.innerHTML = '';
+
+        CURSES.forEach(curse => {
+            let card = document.createElement('div');
+            card.className = 'quest-card curse-card';
+            card.innerText = curse.text;
+            card.onclick = () => applyCurse(curse.id);
+            list.appendChild(card);
+        });
+    }
+
+    function applyCurse(id) {
+        getEl('modal-curse').style.display = 'none';
+        state.activeCurses.push(id);
+
+        switch(id) {
+            case 0:
+                state.modifiers.numMultiplier *= 1.5;
+                state.skips++;
+                break;
+            case 1:
+                state.modifiers.numMultiplier *= 0.8;
+                state.modifiers.phantomNodesQueue += 2; // Force 2 extra normal quests
+                break;
+            case 2:
+                state.modifiers.rerollPerTile = true;
+                state.modifiers.singleOption = true;
+                break;
+            case 3:
+                state.modifiers.autoSkipNext += 1;
+                state.modifiers.bossOverrideQueue += 1;
+                break;
+            case 4:
+                state.modifiers.skipEveryOther = true;
+                state.modifiers.extraQuestsGlobal += 1;
+                break;
+            case 5:
+                state.modifiers.extraQuestsNextNode += 1;
+                openRemoveCurse();
+                return; // Wait for remove UI to close
+        }
+        
+        updateUI();
+    }
+
+    function openRemoveCurse() {
+        if(state.activeCurses.length === 0) {
+            updateUI();
+            return;
+        }
+
+        getEl('modal-remove-curse').style.display = 'flex';
+        const list = getEl('remove-curse-list');
+        list.innerHTML = '';
+
+        state.activeCurses.forEach((curseId, index) => {
+            let card = document.createElement('div');
+            card.className = 'quest-card';
+            card.innerText = CURSES.find(c => c.id === curseId).text;
+            card.onclick = () => {
+                state.activeCurses.splice(index, 1);
+                reverseCurseEffect(curseId);
+                closeRemoveCurse(true);
+            };
+            list.appendChild(card);
+        });
+    }
+
+    function reverseCurseEffect(id) {
+        if (id === 0) state.modifiers.numMultiplier /= 1.5;
+        if (id === 1) state.modifiers.numMultiplier /= 0.8;
+        if (id === 2) { 
+            if (!state.activeCurses.includes(2)) {
+                state.modifiers.rerollPerTile = false;
+                state.modifiers.singleOption = false;
+            }
+        }
+        if (id === 4) state.modifiers.extraQuestsGlobal--;
+    }
+
+    function closeRemoveCurse(didRemove) {
+        getEl('modal-remove-curse').style.display = 'none';
+        updateUI();
+    }
+
+</script>
+</body>
+</html>
