@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quest Spire</title>
+    <title>friend group roguelike</title>
     <style>
         :root {
             --bg-color: #121216;
@@ -161,7 +161,7 @@
             border: 2px solid var(--border-color); background: var(--bg-color);
             padding: 20px; border-radius: var(--radius); cursor: pointer; transition: all 0.2s;
             font-size: 16px; line-height: 1.5; display: flex; align-items: center; position: relative;
-            white-space: pre-wrap; /* Allows formatting \n correctly for multi-line quests */
+            white-space: pre-wrap; 
         }
         .quest-card:hover { border-color: var(--primary); transform: translateX(5px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .quest-card.boss-card { border-color: var(--boss-color); }
@@ -197,12 +197,12 @@
     <!-- START SCREEN -->
     <div id="screen-start" class="screen active">
         <div class="menu-container">
-            <h1>Quest Spire</h1>
+            <h1>dyaln is queerer than jaxon</h1>
+            <p id="seed-display" style="color: var(--static-color); font-size: 14px; margin-top: -20px; margin-bottom: 30px; display: none;"></p>
             <button onclick="startGame(true)" id="btn-continue" style="display:none; background-color: var(--success);">Continue Run</button>
             <button onclick="startGame(false)" id="btn-new-game">New Game</button>
             <button onclick="showScreen('screen-info')">Game Info / Quests</button>
             <button onclick="showScreen('screen-options')">Options</button>
-            <button onclick="abandonRun()" id="btn-abandon" class="btn-danger" style="display:none;">Abandon Run</button>
         </div>
     </div>
 
@@ -336,7 +336,27 @@
 </div>
 
 <script>
-    // MUTABLE NORMAL QUESTS (Numbers in these will be changed by curses)
+    // --- SEED RNG ---
+    let rngState = 12345;
+    
+    function seededRandom() {
+        rngState = (rngState * 9301 + 49297) % 233280;
+        return rngState / 233280;
+    }
+
+    function shuffleArray(array) {
+        let arr = [...array];
+        let currentIndex = arr.length, randomIndex;
+        while (currentIndex != 0) {
+            randomIndex = Math.floor(seededRandom() * currentIndex);
+            currentIndex--;
+            [arr[currentIndex], arr[randomIndex]] = [arr[randomIndex], arr[currentIndex]];
+        }
+        return arr;
+    }
+
+    // --- DATA ---
+     // MUTABLE NORMAL QUESTS (Numbers in these will be changed by curses)
     const NORMAL_QUESTS = [
         "5 kills in jjs", "win a game in any fps game", "do 30 pushups", 
         "hit a second tempo attack with someone in volleyball", "win 1 ranked game in tsb", 
@@ -404,6 +424,8 @@
 
     // --- STATE ---
     let state = {
+        rngState: 0,
+        originalSeed: 0,
         floors: [],
         currentFloor: -1, 
         currentNodeId: null,
@@ -453,25 +475,35 @@
         if (saved) {
             getEl('btn-continue').style.display = 'inline-block';
             getEl('btn-new-game').style.display = 'none';
-            getEl('btn-abandon').style.display = 'inline-block';
+            
+            // Show seed info on main menu
+            let tempState = JSON.parse(saved);
+            getEl('seed-display').style.display = 'block';
+            getEl('seed-display').innerText = `Active Seed: ${tempState.originalSeed}`;
         } else {
             getEl('btn-continue').style.display = 'none';
             getEl('btn-new-game').style.display = 'inline-block';
-            getEl('btn-abandon').style.display = 'none';
+            getEl('seed-display').style.display = 'none';
         }
     }
 
-    function saveGame() { localStorage.setItem('questSpireSave', JSON.stringify(state)); checkSave(); }
-    function loadGame() { const saved = localStorage.getItem('questSpireSave'); if (saved) state = JSON.parse(saved); }
-    function clearSave() { localStorage.removeItem('questSpireSave'); }
+    function saveGame() { 
+        state.rngState = rngState; // Sync RNG state before saving
+        localStorage.setItem('questSpireSave', JSON.stringify(state)); 
+        checkSave(); 
+    }
     
-    function abandonRun() {
-        if(confirm("Are you sure you want to abandon your current run? All progress will be lost.")) {
-            clearSave();
-            state.floors = []; 
-            state.currentFloor = -1;
-            checkSave();
+    function loadGame() { 
+        const saved = localStorage.getItem('questSpireSave'); 
+        if (saved) {
+            state = JSON.parse(saved); 
+            rngState = state.rngState; // Restore RNG position
         }
+    }
+    
+    function clearSave() { 
+        localStorage.removeItem('questSpireSave'); 
+        checkSave();
     }
 
     function saveOptions() {
@@ -506,7 +538,12 @@
     }
 
     function generateMap() {
+        // Create new seed
+        let newSeed = Math.floor(Math.random() * 1000000);
+        rngState = newSeed;
+        
         state = {
+            rngState: rngState, originalSeed: newSeed,
             floors: [], currentFloor: -1, currentNodeId: null, skips: 0, rerolls: 0, activeCurses: [], questHistory: [],
             modifiers: { numMultiplier: 1.0, singleOption: false, rerollPerTile: false, bossOverrideQueue: 0, extraQuestsGlobal: 0, extraQuestsNextNode: 0, autoSkipNext: 0, skipEveryOther: false, skipNextDueToCurse4: false, phantomNodesQueue: 0 },
             questsToComplete: 0, currentQuestPool: [], isUsingSkipButton: false, resolvingNodeType: null
@@ -516,19 +553,19 @@
         
         for(let f = 0; f < totalFloors; f++) {
             let floorNodes = [];
-            let count = (f === totalFloors - 1) ? 1 : (f === 0 ? 3 : Math.floor(Math.random() * 3) + 2); 
+            let count = (f === totalFloors - 1) ? 1 : (f === 0 ? 3 : Math.floor(seededRandom() * 3) + 2); 
             
             for(let i = 0; i < count; i++) {
                 let baseX = (i + 1) / (count + 1);
-                let jitter = (Math.random() * 0.08) - 0.04; 
+                let jitter = (seededRandom() * 0.08) - 0.04; 
                 let x = Math.max(0.1, Math.min(0.9, baseX + jitter)); 
                 
                 let type = 'normal';
                 if (f === totalFloors - 1) {
                     type = 'boss';
-                } else if (f > Math.floor(totalFloors / 2) && Math.random() > 0.8) {
+                } else if (f > Math.floor(totalFloors / 2) && seededRandom() > 0.8) {
                     type = 'elite';
-                } else if (Math.random() > 0.70) {
+                } else if (seededRandom() > 0.70) {
                     type = 'curse';
                 }
                 
@@ -750,20 +787,19 @@
             ];
         }
 
-        let shuffled = pool.sort(() => 0.5 - Math.random());
+        let shuffled = shuffleArray(pool);
         let selected = shuffled.slice(0, numOptions);
 
         state.currentQuestPool = selected.map(q => {
             let textRaw = q.raw;
             let isStat = !q.mutable;
 
-            // Generate the dynamic 10 random quests list when encountered
             if (textRaw === "do 10 random normal quests") {
                 let allNormalQuests = [...NORMAL_QUESTS, ...STATIC_NORMAL_QUESTS];
-                let shuffledNormal = allNormalQuests.sort(() => 0.5 - Math.random());
+                let shuffledNormal = shuffleArray(allNormalQuests);
                 let tenPicked = shuffledNormal.slice(0, 10);
                 textRaw = "Do these 10 random normal quests:\n• " + tenPicked.join("\n• ");
-                isStat = true; // Ensure standard parser doesn't try to mess up numbers inside this string
+                isStat = true; 
             }
 
             return {
@@ -783,6 +819,7 @@
 
     function closeQuestSelection() {
         getEl('modal-quest').style.display = 'none';
+        saveGame();
     }
 
     function updateQuestUI() {
@@ -851,9 +888,8 @@
         state.currentNodeId = null; 
         
         if (node.type === 'boss' && !wasSkipped) {
-            alert("Victory! You have conquered the Quest Spire.");
+            alert("good job nigga.");
             clearSave();
-            checkSave();
             showScreen('screen-start');
             return;
         }
